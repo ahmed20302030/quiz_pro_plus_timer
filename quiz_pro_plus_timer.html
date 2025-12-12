@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <title>منصة المسابقة — نسخة محسّنة + مؤقّت لكل سؤال</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.rtl.min.css" rel="stylesheet"/>
+  <style>
+    body { background:#f7f9fc; font-family:'Tahoma',sans-serif; }
+    h2,h3,h4,h5 { color:#1f4e78; }
+    .card { box-shadow:0 1px 6px rgba(0,0,0,0.08); }
+    #options button { font-size:1rem; }
+    .nav-link.active { font-weight:bold; }
+    .form-text { font-size:.9rem; }
+    .table-fixed { table-layout:fixed; }
+    .table-fixed td, .table-fixed th { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .timer-box { display:flex; align-items:center; gap:.75rem; }
+    .timer-visual { height:8px; background:#e9ecef; border-radius:4px; overflow:hidden; }
+    .timer-visual > div { height:100%; background:#dc3545; width:100%; transition: width 1s linear; }
+  </style>
+</head>
+<body class="container py-4">
+  <header class="mb-3">
+    <div class="d-flex align-items-center justify-content-between">
+      <h2 class="m-0">منصة المسابقة — نسخة محسّنة (مع مؤقّت)</h2>
+      <div class="d-flex gap-2 align-items-center">
+        <button id="btnAudioPlay" class="btn btn-outline-secondary">تشغيل الموسيقى 🎵</button>
+        <button id="btnAudioStop" class="btn btn-outline-secondary">كتم</button>
+        <div class="d-flex align-items-center ms-2">
+          <label class="me-2">الصوت</label>
+          <input id="audioVol" type="range" min="0" max="1" step="0.05" value="0.4">
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <ul class="nav nav-tabs mb-3" role="tablist">
+    <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#homeTab" type="button">الرئيسية</button></li>
+    <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#loginTab" type="button">تسجيل الدخول</button></li>
+    <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#studentTab" type="button">واجهة الطالب</button></li>
+    <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#teacherTab" type="button">واجهة المعلم</button></li>
+    <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#settingsTab" type="button">الإعدادات</button></li>
+  </ul>
+
+  <div class="tab-content">
+    <!-- الرئيسية -->
+    <div class="tab-pane fade show active" id="homeTab">
+      <div class="card p-3">
+        <h4>مرحبًا بك 👋</h4>
+        <p>هذه النسخة تحتوي على مؤقّت لكل سؤال. إذا انتهى الوقت بدون اختيار إجابة، تُسجَّل إجابة خاطئة تلقائيًا ويتم الانتقال للسؤال التالي.</p>
+      </div>
+    </div>
+
+    <!-- تسجيل الدخول -->
+    <div class="tab-pane fade" id="loginTab">
+      <div class="card p-3">
+        <h4>تسجيل الدخول بالبريد الموحد (تجريبي)</h4>
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label class="form-label">البريد الموحد</label>
+            <input id="emailInput" type="email" class="form-control" placeholder="name@school.edu.eg">
+            <div class="form-text">يجب أن ينتهي البريد بأحد النطاقات المسموحة.</div>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">الدور المتوقع</label>
+            <select id="roleSelect" class="form-select">
+              <option value="auto">تلقائي</option>
+              <option value="student">طالب</option>
+              <option value="teacher">معلم</option>
+            </select>
+            <div class="form-text">إذا كان البريد ضمن قائمة المعلمين، يُمنح دور معلم تلقائيًا.</div>
+          </div>
+        </div>
+        <div class="mt-3">
+          <button class="btn btn-primary" onclick="loginUser()">دخول</button>
+          <span id="loginMsg" class="ms-3 text-danger"></span>
+        </div>
+      </div>
+      <div class="card p-3 mt-3">
+        <h5>المستخدم الحالي</h5>
+        <div>البريد: <span id="curEmail">—</span></div>
+        <div>الدور: <span id="curRole">—</span></div>
+        <button class="btn btn-outline-danger mt-2" onclick="logoutUser()">تسجيل الخروج</button>
+      </div>
+    </div>
+
+    <!-- الطالب -->
+    <div class="tab-pane fade" id="studentTab">
+      <div class="card p-3">
+        <div class="d-flex justify-content-between align-items-center">
+          <h4 class="m-0">واجهة الطالب</h4>
+          <div>
+            رصيدك: <span id="walletBalance">0</span> جنيه
+            <button class="btn btn-sm btn-outline-secondary ms-2" onclick="chargeWallet()">شحن 50 جنيه</button>
+          </div>
+        </div>
+        <hr>
+        <div class="row g-3">
+          <div class="col-md-4">
+            <label class="form-label">اختر المادة:</label>
+            <select id="subjectSelect" class="form-select"></select>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">الوقت لكل سؤال (ثوانٍ)</label>
+            <input id="questionTimeInput" type="number" class="form-control" min="5" max="300" placeholder="مثال: 45">
+            <div class="form-text">يمكن أيضًا ضبط القيمة من تبويب الإعدادات.</div>
+          </div>
+          <div class="col-md-4 d-flex align-items-end">
+            <button class="btn btn-success w-100" onclick="startQuiz()">بدء المسابقة (خصم الاشتراك)</button>
+          </div>
+        </div>
+
+        <div id="quizArea" class="mt-3 d-none">
+          <div class="d-flex justify-content-between flex-wrap align-items-center">
+            <div>أخطاء: <span id="wrongCount">0</span> / <span id="maxWrong">0</span></div>
+            <div>صحيح: <span id="correctCount">0</span></div>
+            <div>السؤال <span id="qIndex">0</span> / <span id="qTotal">0</span></div>
+            <div class="flex-grow-1 ms-3">
+              <div class="progress" style="height:8px;">
+                <div id="progressBar" class="progress-bar" style="width:0%;"></div>
+              </div>
+            </div>
+            <div class="timer-box ms-3 mt-2 mt-md-0">
+              <strong>المؤقّت:</strong>
+              <span id="timeLeft">—</span> ثانية
+              <div class="timer-visual flex-grow-1" style="min-width:160px;">
+                <div id="timerBar"></div>
+              </div>
+            </div>
+          </div>
+          <hr>
+          <h5 id="qStem"></h5>
+          <div id="options" class="mt-3"></div>
+          <button id="nextBtn" class="btn btn-secondary mt-3 d-none">السؤال التالي</button>
+        </div>
+
+        <div id="lockArea" class="alert alert-warning mt-3 d-none">
+          <h5>انتهت الجلسة بسبب الحد الأقصى للأخطاء.</h5>
+          <p>للمواصلة، يرجى إعادة المحاولة بعد خصم <strong id="retryFeeView">—</strong> جنيه.</p>
+          <button class="btn btn-success" onclick="retryQuiz()">إعادة المحاولة</button>
+        </div>
+
+        <div id="earningsArea" class="alert alert-info mt-3 d-none">
+          <h6>أرباحك لهذه الجلسة: <strong><span id="earnAmount">0</span> جنيه</strong></h6>
+        </div>
+
+        <div class="mt-4">
+          <h5>سجل الجلسات</h5>
+          <table class="table table-sm table-striped table-fixed">
+            <thead><tr><th>التاريخ</th><th>المادة</th><th>صحيح</th><th>خاطئ</th><th>أرباح</th><th>وقت/سؤال</th></tr></thead>
+            <tbody id="sessionsTable"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- المعلم -->
+    <div class="tab-pane fade" id="teacherTab">
+      <div class="card p-3">
+        <div class="d-flex justify-content-between align-items-center">
+          <h4 class="m-0">واجهة المعلم</h4>
+          <div class="text-muted">أسئلتك محفوظة محليًا</div>
+        </div>
+        <hr>
+        <div class="row g-3">
+          <div class="col-md-4">
+            <label class="form-label">المادة</label>
+            <select id="tSubject" class="form-select"></select>
+          </div>
+          <div class="col-md-8">
+            <label class="form-label">نص السؤال</label>
+            <textarea id="tStem" class="form-control" rows="2" placeholder="اكتب السؤال"></textarea>
+          </div>
+          <div class="col-md-6"><input id="opt1" class="form-control" placeholder="خيار 1"></div>
+          <div class="col-md-6"><input id="opt2" class="form-control" placeholder="خيار 2"></div>
+          <div class="col-md-6"><input id="opt3" class="form-control" placeholder="خيار 3"></div>
+          <div class="col-md-6"><input id="opt4" class="form-control" placeholder="خيار 4"></div>
+          <div class="col-md-4">
+            <label class="form-label">الإجابة الصحيحة</label>
+            <select id="correctIndex" class="form-select">
+              <option value="1">خيار 1</option>
+              <option value="2">خيار 2</option>
+              <option value="3">خيار 3</option>
+              <option value="4">خيار 4</option>
+            </select>
+          </div>
+          <div class="col-md-8 d-flex align-items-end">
+            <button class="btn btn-primary w-100" onclick="saveQuestion()">حفظ السؤال</button>
+          </div>
+        </div>
+        <hr>
+        <h5>الأسئلة الموجودة</h5>
+        <table class="table table-sm table-striped table-fixed">
+          <thead><tr><th style="width:8ch;">#</th><th>السؤال</th><th style="width:20ch;">المادة</th><th style="width:14ch;">إجراءات</th></tr></thead>
+          <tbody id="questionsTable"></tbody>
+        </table>
+        <div class="d-flex gap-2 mt-2">
+          <button class="btn btn-outline-secondary" onclick="exportQuestions()">تصدير JSON</button>
+          <label class="btn btn-outline-secondary mb-0">
+            استيراد JSON <input id="importFile" type="file" accept="application/json" hidden onchange="importQuestions(event)">
+          </label>
+        </div>
+      </div>
+    </div>
+
+    <!-- الإعدادات -->
+    <div class="tab-pane fade" id="settingsTab">
+      <div class="card p-3">
+        <h4>إعدادات عامة</h4>
+        <div class="row g-3">
+          <div class="col-md-4">
+            <label class="form-label">عدد أسئلة الجلسة</label>
+            <input id="setQuestionCount" type="number" class="form-control" min="5" max="50">
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">الحد الأقصى للأخطاء</label>
+            <input id="setMaxWrong" type="number" class="form-control" min="1" max="10">
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">مكافأة الإجابة الصحيحة (جنيه)</label>
+            <input id="setPerCorrect" type="number" step="0.05" class="form-control">
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">رسوم الاشتراك (جنيه)</label>
+            <input id="setSubscribeFee" type="number" class="form-control">
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">رسوم إعادة المحاولة (جنيه)</label>
+            <input id="setRetryFee" type="number" class="form-control">
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">الوقت لكل سؤال (ثوانٍ)</label>
+            <input id="setQuestionTime" type="number" class="form-control" min="5" max="300">
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">النطاقات المسموحة (مفصولة بفواصل)</label>
+            <input id="setDomains" type="text" class="form-control" placeholder="school.edu.eg, example.edu">
+          </div>
+          <div class="col-12">
+            <label class="form-label">بريد المعلمين (مفصولة بفواصل)</label>
+            <input id="setTeacherEmails" type="text" class="form-control" placeholder="teacher1@school.edu.eg, teacher2@school.edu.eg">
+          </div>
+        </div>
+        <div class="mt-3 d-flex gap-2">
+          <button class="btn btn-primary" onclick="saveSettings()">حفظ الإعدادات</button>
+          <button class="btn btn-outline-danger" onclick="resetAll()">إعادة ضبط كل البيانات</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- موسيقى هادئة (WAV قصيرة) مضمنة Base64 -->
+  <audio id="bgAudio" src="data:audio/wav;base64,UklGRkYAAABXQVZFZm10IBAAAAABAAEAESsAACJWAAACABAAZGF0YQAAAP8AAP8A//8AAP8AAP8A//8AAP8AAP8A//8AAP8AAP8A//8AAP8AAP8A//8AAP8AAP8A//8A" loop></audio>
+
+  <script>
+    // المواد
+    const SUBJECTS = [
+      {id:1,name:'الرياضيات'}, {id:2,name:'الفيزياء'}, {id:3,name:'الكيمياء'}, {id:4,name:'اللغة العربية'}
+    ];
+
+    // الإعدادات الافتراضية
+    const DEFAULTS = {
+      questionCount: 10,
+      maxWrong: 3,
+      perCorrectReward: 0.75,
+      subscribeFee: 10,
+      retryFee: 15,
+      questionTime: 45, // ثوانٍ لكل سؤال
+      allowedDomains: ['school.edu.eg'],
+      teacherEmails: []
+    };
+
+    // الحالة العامة
+    let SETTINGS = loadSettings();
+    let wallet = parseFloat(localStorage.getItem('student_wallet')||'0');
+    let loggedInEmail = localStorage.getItem('logged_email')||'';
+    let loggedInRole  = localStorage.getItem('logged_role')||'';
+
+    // مؤقّت السؤال
+    let timerTotal = SETTINGS.questionTime;
+    let timerLeft  = SETTINGS.questionTime;
+    let timerId    = null;
+
+    // تهيئة الواجهة
+    document.addEventListener('DOMContentLoaded', () => {
+      updateLoginView();
+
+      const subjectSelect = document.getElementById('subjectSelect');
+      const tSubject      = document.getElementById('tSubject');
+      SUBJECTS.forEach(s=>{
+        const o1=document.createElement('option'); o1.value=s.id; o1.textContent=s.name; subjectSelect.appendChild(o1);
+        const o2=document.createElement('option'); o2.value=s.id; o2.textContent=s.name; tSubject.appendChild(o2);
+      });
+
+      // عرض الإعدادات الحالية
+      document.getElementById('setQuestionCount').value = SETTINGS.questionCount;
+      document.getElementById('setMaxWrong').value     = SETTINGS.maxWrong;
+      document.getElementById('setPerCorrect').value   = SETTINGS.perCorrectReward;
+      document.getElementById('setSubscribeFee').value = SETTINGS.subscribeFee;
+      document.getElementById('setRetryFee').value     = SETTINGS.retryFee;
+      document.getElementById('setQuestionTime').value = SETTINGS.questionTime;
+      document.getElementById('setDomains').value      = SETTINGS.allowedDomains.join(', ');
+      document.getElementById('setTeacherEmails').value= SETTINGS.teacherEmails.join(', ');
+
+      document.getElementById('retryFeeView').textContent = SETTINGS.retryFee.toFixed(2);
+      document.getElementById('maxWrong').textContent     = SETTINGS.maxWrong;
+      document.getElementById('timeLeft').textContent     = SETTINGS.questionTime;
+      updateTimerBar();
+
+      // صوت
+      const audio = document.getElementById('bgAudio');
+      const vol   = document.getElementById('audioVol');
+      vol.addEventListener('input', ()=>{ audio.volume = parseFloat(vol.value); });
+      document.getElementById('btnAudioPlay').onclick = ()=> audio.play();
+      document.getElementById('btnAudioStop').onclick = ()=> { audio.pause(); audio.currentTime=0; };
+
+      // عرض الأسئلة الحالية للمعلم
+      renderQuestionsTable();
+      updateWalletView();
+      renderSessions();
+    });
+
+    // تحميل/حفظ الإعدادات
+    function loadSettings(){
+      const raw = localStorage.getItem('quiz_settings');
+      if(!raw){ return {...DEFAULTS}; }
+      try { const s = JSON.parse(raw); return Object.assign({}, DEFAULTS, s); } catch(e){ return {...DEFAULTS}; }
+    }
+    function saveSettings(){
+      SETTINGS.questionCount   = parseInt(document.getElementById('setQuestionCount').value,10);
+      SETTINGS.maxWrong        = parseInt(document.getElementById('setMaxWrong').value,10);
+      SETTINGS.perCorrectReward= parseFloat(document.getElementById('setPerCorrect').value);
+      SETTINGS.subscribeFee    = parseFloat(document.getElementById('setSubscribeFee').value);
+      SETTINGS.retryFee        = parseFloat(document.getElementById('setRetryFee').value);
+      SETTINGS.questionTime    = parseInt(document.getElementById('setQuestionTime').value,10);
+      SETTINGS.allowedDomains  = document.getElementById('setDomains').value.split(',').map(x=>x.trim()).filter(x=>x);
+      SETTINGS.teacherEmails   = document.getElementById('setTeacherEmails').value.split(',').map(x=>x.trim().toLowerCase()).filter(x=>x);
+      localStorage.setItem('quiz_settings', JSON.stringify(SETTINGS));
+      document.getElementById('retryFeeView').textContent = SETTINGS.retryFee.toFixed(2);
+      document.getElementById('maxWrong').textContent     = SETTINGS.maxWrong;
+      alert('تم حفظ الإعدادات');
+    }
+
+    // تسجيل الدخول/الخروج (تجريبي)
+    function loginUser(){
+      const email = document.getElementById('emailInput').value.trim().toLowerCase();
+      const roleSel = document.getElementById('roleSelect').value;
+      const msg  = document.getElementById('loginMsg');
+      if(!email){ msg.textContent='أدخل البريد'; return; }
+      if(!isAllowedDomain(email)){ msg.textContent='النطاق غير مسموح'; return; }
+      let role = 'student';
+      if(roleSel === 'teacher') role = 'teacher';
+      else if(roleSel === 'student') role = 'student';
+      else { if(SETTINGS.teacherEmails.includes(email)) role = 'teacher'; }
+      localStorage.setItem('logged_email', email);
+      localStorage.setItem('logged_role', role);
+      loggedInEmail = email; loggedInRole = role; msg.textContent='';
+      updateLoginView();
+      const tabBtn = document.querySelector(`[data-bs-target="#${role==='teacher'?'teacherTab':'studentTab'}"]`);
+      if(tabBtn) tabBtn.click();
+    }
+    function logoutUser(){
+      loggedInEmail=''; loggedInRole='';
+      localStorage.removeItem('logged_email'); localStorage.removeItem('logged_role');
+      updateLoginView(); stopTimer(); alert('تم تسجيل الخروج');
+    }
+    function isAllowedDomain(email){ const parts = email.split('@'); if(parts.length<2) return false; const dom = parts[1]; return SETTINGS.allowedDomains.some(d=> dom.endsWith(d)); }
+    function updateLoginView(){ document.getElementById('curEmail').textContent = loggedInEmail||'—'; document.getElementById('curRole').textContent  = loggedInRole||'—'; }
+
+    // الطالب
+    let currentQuestions=[], currentIndex=0, wrongCount=0, correctCount=0;
+    function updateWalletView(){ document.getElementById('walletBalance').textContent = wallet.toFixed(2); }
+    function chargeWallet(){ wallet+=50; localStorage.setItem('student_wallet', wallet.toFixed(2)); updateWalletView(); }
+
+    function startQuiz(){
+      if(!ensureStudent()) return;
+      const customTime = parseInt(document.getElementById('questionTimeInput').value,10);
+      if(!isNaN(customTime) && customTime>=5) SETTINGS.questionTime = customTime;
+      if(wallet < SETTINGS.subscribeFee){ alert('رصيد غير كافٍ للاشتراك'); return; }
+      wallet -= SETTINGS.subscribeFee; localStorage.setItem('student_wallet', wallet.toFixed(2)); updateWalletView();
+      wrongCount=0; correctCount=0; currentIndex=0;
+      const sid = parseInt(document.getElementById('subjectSelect').value,10);
+      const arr = getSubjectQuestions(sid);
+      while(arr.length < SETTINGS.questionCount){
+        const i = arr.length+1;
+        arr.push({id:Date.now()+i, stem:`سؤال ${i} — ${getSubjectName(sid)}`,
+          options:[{text:'خيار 1',correct:i%4===0},{text:'خيار 2',correct:i%4===1},{text:'خيار 3',correct:i%4===2},{text:'خيار 4',correct:i%4===3}]
+        });
+      }
+      setSubjectQuestions(sid, arr);
+      currentQuestions = shuffle(arr).slice(0, SETTINGS.questionCount);
+      document.getElementById('quizArea').classList.remove('d-none');
+      document.getElementById('earningsArea').classList.add('d-none');
+      document.getElementById('lockArea').classList.add('d-none');
+      renderQuestion();
+    }
+    function renderQuestion(){
+      document.getElementById('wrongCount').textContent = wrongCount;
+      document.getElementById('correctCount').textContent = correctCount;
+      document.getElementById('qIndex').textContent = currentIndex+1;
+      document.getElementById('qTotal').textContent = currentQuestions.length;
+      document.getElementById('progressBar').style.width = Math.round((currentIndex)/currentQuestions.length*100)+'%';
+      const q = currentQuestions[currentIndex];
+      document.getElementById('qStem').textContent = q.stem;
+      const optionsDiv = document.getElementById('options'); optionsDiv.innerHTML='';
+      const idx=[0,1,2,3]; shuffle(idx).forEach(i=>{
+        const btn=document.createElement('button');
+        btn.className='btn btn-outline-primary w-100 my-1 text-start';
+        btn.textContent=q.options[i].text;
+        btn.onclick=()=>handleAnswer(q.options[i].correct);
+        optionsDiv.appendChild(btn);
+      });
+      document.getElementById('nextBtn').classList.add('d-none');
+      // بدء المؤقّت
+      startTimer();
+    }
+    function handleAnswer(isCorrect){
+      stopTimer();
+      if(isCorrect) correctCount++; else wrongCount++;
+      if(wrongCount >= SETTINGS.maxWrong){ lockQuiz(); return; }
+      const nextBtn = document.getElementById('nextBtn');
+      nextBtn.classList.remove('d-none');
+      nextBtn.onclick = ()=>{
+        currentIndex++;
+        if(currentIndex >= currentQuestions.length){ finishQuiz(); }
+        else { renderQuestion(); nextBtn.classList.add('d-none'); }
+      };
+    }
+    function lockQuiz(){ document.getElementById('quizArea').classList.add('d-none'); document.getElementById('lockArea').classList.remove('d-none'); stopTimer(); }
+    function retryQuiz(){
+      if(wallet >= SETTINGS.retryFee){
+        wallet -= SETTINGS.retryFee; localStorage.setItem('student_wallet', wallet.toFixed(2)); updateWalletView();
+        wrongCount=0; correctCount=0; // استكمال نفس المجموعة من البداية
+        currentIndex=0; document.getElementById('lockArea').classList.add('d-none'); document.getElementById('quizArea').classList.remove('d-none'); renderQuestion();
+      } else { alert('رصيد غير كافٍ لإعادة المحاولة'); }
+    }
+    function finishQuiz(){
+      stopTimer();
+      document.getElementById('quizArea').classList.add('d-none');
+      const amount = correctCount * SETTINGS.perCorrectReward;
+      document.getElementById('earnAmount').textContent = amount.toFixed(2);
+      document.getElementById('earningsArea').classList.remove('d-none');
+      const sid = parseInt(document.getElementById('subjectSelect').value,10);
+      const sessions = JSON.parse(localStorage.getItem('quiz_sessions')||'[]');
+      sessions.push({date:new Date().toLocaleString('ar-EG'), subject:sid, correct:correctCount, wrong:wrongCount, earn:amount, qtime:SETTINGS.questionTime});
+      localStorage.setItem('quiz_sessions', JSON.stringify(sessions));
+      renderSessions();
+    }
+    function renderSessions(){
+      const tb = document.getElementById('sessionsTable'); tb.innerHTML='';
+      const sessions = JSON.parse(localStorage.getItem('quiz_sessions')||'[]');
+      sessions.slice().reverse().forEach(s=>{
+        const tr=document.createElement('tr');
+        const earn = (typeof s.earn==='number')? s.earn.toFixed(2): s.earn;
+        tr.innerHTML = `<td>${s.date}</td><td>${getSubjectName(s.subject)}</td><td>${s.correct}</td><td>${s.wrong}</td><td>${earn}</td><td>${s.qtime||SETTINGS.questionTime}ث</td>`;
+        tb.appendChild(tr);
+      });
+    }
+    function ensureStudent(){ if(loggedInRole !== 'student') { alert('يجب تسجيل الدخول كطالب'); return false; } return true; }
+
+    // المؤقّت
+    function startTimer(){
+      timerTotal = SETTINGS.questionTime; timerLeft = timerTotal;
+      document.getElementById('timeLeft').textContent = timerLeft;
+      updateTimerBar();
+      stopTimer();
+      timerId = setInterval(()=>{
+        timerLeft--; if(timerLeft<0) timerLeft=0;
+        document.getElementById('timeLeft').textContent = timerLeft;
+        updateTimerBar();
+        if(timerLeft<=0){ // انتهى الوقت → إجابة خاطئة تلقائيًا
+          stopTimer();
+          handleAnswer(false);
+        }
+      }, 1000);
+    }
+    function stopTimer(){ if(timerId){ clearInterval(timerId); timerId=null; } }
+    function updateTimerBar(){
+      const p = timerTotal>0? (timerLeft/timerTotal)*100 : 0;
+      document.getElementById('timerBar').style.width = Math.max(0, Math.min(100, p))+'%';
+    }
+
+    // المعلم
+    function saveQuestion(){
+      if(loggedInRole !== 'teacher'){ alert('يجب تسجيل الدخول كمعلم'); return; }
+      const sid  = parseInt(document.getElementById('tSubject').value,10);
+      const stem = document.getElementById('tStem').value.trim();
+      const o1   = document.getElementById('opt1').value.trim();
+      const o2   = document.getElementById('opt2').value.trim();
+      const o3   = document.getElementById('opt3').value.trim();
+      const o4   = document.getElementById('opt4').value.trim();
+      const correct = parseInt(document.getElementById('correctIndex').value,10);
+      if(!stem||!o1||!o2||!o3||!o4){ alert('أكمل جميع الحقول'); return; }
+      const arr = getSubjectQuestions(sid);
+      const id = Date.now();
+      arr.push({id, stem, options:[
+        {text:o1,correct:correct===1}, {text:o2,correct:correct===2}, {text:o3,correct:correct===3}, {text:o4,correct:correct===4}
+      ]});
+      setSubjectQuestions(sid, arr);
+      document.getElementById('tStem').value=''; document.getElementById('opt1').value=''; document.getElementById('opt2').value=''; document.getElementById('opt3').value=''; document.getElementById('opt4').value='';
+      alert('تم حفظ السؤال'); renderQuestionsTable();
+    }
+    function renderQuestionsTable(){
+      const tb = document.getElementById('questionsTable'); tb.innerHTML='';
+      SUBJECTS.forEach(s=>{
+        const arr = getSubjectQuestions(s.id);
+        arr.forEach((q,idx)=>{
+          const tr=document.createElement('tr');
+          tr.innerHTML = `<td>${idx+1}</td><td>${escapeHtml(q.stem)}</td><td>${s.name}</td>
+            <td>
+              <button class="btn btn-sm btn-outline-primary me-1" onclick="editQuestion(${s.id},${q.id})">تعديل</button>
+              <button class="btn btn-sm btn-outline-danger" onclick="deleteQuestion(${s.id},${q.id})">حذف</button>
+            </td>`;
+          tb.appendChild(tr);
+        });
+      });
+    }
+    function editQuestion(subjectId, qid){
+      const arr = getSubjectQuestions(subjectId);
+      const q = arr.find(x=>x.id===qid); if(!q) return;
+      document.getElementById('tSubject').value = subjectId;
+      document.getElementById('tStem').value    = q.stem;
+      document.getElementById('opt1').value    = q.options[0].text;
+      document.getElementById('opt2').value    = q.options[1].text;
+      document.getElementById('opt3').value    = q.options[2].text;
+      document.getElementById('opt4').value    = q.options[3].text;
+      document.getElementById('correctIndex').value = (q.options.findIndex(o=>o.correct)+1) || 1;
+      deleteQuestion(subjectId, qid);
+    }
+    function deleteQuestion(subjectId, qid){ let arr = getSubjectQuestions(subjectId); arr = arr.filter(x=>x.id!==qid); setSubjectQuestions(subjectId, arr); renderQuestionsTable(); }
+
+    // تصدير/استيراد
+    function exportQuestions(){
+      const bundle = {}; SUBJECTS.forEach(s=>{ bundle[s.id] = getSubjectQuestions(s.id); });
+      const blob = new Blob([JSON.stringify(bundle,null,2)], {type:'application/json'});
+      const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'questions_export.json'; document.body.appendChild(a); a.click(); a.remove();
+    }
+    function importQuestions(evt){
+      const file = evt.target.files[0]; if(!file) return;
+      const reader = new FileReader(); reader.onload = ()=>{ try { const json = JSON.parse(reader.result); SUBJECTS.forEach(s=>{ if(json[s.id]) setSubjectQuestions(s.id, json[s.id]); }); alert('تم الاستيراد بنجاح'); renderQuestionsTable(); } catch(e){ alert('ملف غير صالح'); } };
+      reader.readAsText(file);
+    }
+
+    // مخزن الأسئلة حسب المادة
+    function getSubjectQuestions(subjectId){ const key = 'questions_'+subjectId; const raw = localStorage.getItem(key); return raw ? JSON.parse(raw) : []; }
+    function setSubjectQuestions(subjectId, arr){ localStorage.setItem('questions_'+subjectId, JSON.stringify(arr)); }
+
+    // أدوات
+    function shuffle(a){ for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; }
+    function getSubjectName(id){ const s=SUBJECTS.find(x=>x.id===id); return s? s.name : '—'; }
+    function escapeHtml(s){ return s.replace(/[&<>]/g, c=> ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]) ); }
+
+    // إعادة ضبط كل البيانات
+    function resetAll(){
+      if(!confirm('سيتم مسح كل البيانات المخزنة محليًا. متأكد؟')) return;
+      Object.keys(localStorage).forEach(k=>{ if(k.startsWith('questions_') || k.startsWith('quiz_') || k==='student_wallet' || k==='logged_email' || k==='logged_role' || k==='quiz_settings') localStorage.removeItem(k); });
+      SETTINGS = {...DEFAULTS}; localStorage.setItem('quiz_settings', JSON.stringify(SETTINGS));
+      wallet = 0; loggedInEmail=''; loggedInRole=''; stopTimer();
+      updateLoginView(); updateWalletView(); renderQuestionsTable(); renderSessions();
+      alert('تمت إعادة الضبط');
+    }
+
+    // جعل الدوال متاحة للعناصر
+    window.loginUser = loginUser;
+    window.logoutUser = logoutUser;
+    window.chargeWallet = chargeWallet;
+    window.startQuiz = startQuiz;
+    window.retryQuiz = retryQuiz;
+    window.saveQuestion = saveQuestion;
+    window.exportQuestions = exportQuestions;
+    window.importQuestions = importQuestions;
+    window.saveSettings = saveSettings;
+    window.resetAll = resetAll;
+    window.editQuestion = editQuestion;
+    window.deleteQuestion = deleteQuestion;
+  </script>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
